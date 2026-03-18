@@ -155,7 +155,32 @@ Sensor::MPU6050::MPU6050(uint scl, uint sda, uint i2c)
     //Write to PWMR_MGMT_1 register addr
     uint8_t write[] = {0x6B, 0x00}; 
     i2c_write_blocking(&i2c0_inst, i2cID, write, 2, false);
+
+    gyro_bias_x = 0.0;
+    gyro_bias_y = 0.0;
+    gyro_bias_z = 0.0;
+    calibrate_gyro(1000);
     
+}
+
+void Sensor::MPU6050::calibrate_gyro(uint32_t samples) {
+    float ang_x_deposite = 0.0;
+    float ang_y_deposite = 0.0;
+    float ang_z_deposite = 0.0;
+
+
+    for(int i = 0; i <= samples; i++) {
+        data data = read_data();
+
+        ang_x_deposite += data.ang_vel_x;
+        ang_y_deposite += data.ang_vel_y;
+        ang_z_deposite += data.ang_vel_z;
+        sleep_ms(5);
+    }
+
+    gyro_bias_x = ang_x_deposite / samples;
+    gyro_bias_y = ang_y_deposite / samples;
+    gyro_bias_z = ang_z_deposite / samples;
 }
 
 Sensor::MPU6050::data Sensor::MPU6050::read_data() {
@@ -172,20 +197,13 @@ Sensor::MPU6050::data Sensor::MPU6050::read_data() {
         words[i] = (bytes[i *2 ] << 8) | (bytes[i * 2 + 1]);
     }
 
-    // self.lin_acc_x = process_raw(data[0], 16384) * 9.80665
-    // self.lin_acc_y = process_raw(data[1], 16384) * 9.80665
-    // self.lin_acc_z = process_raw(data[2], 16384) * 9.80665
-    // self.ang_vel_x = process_raw(data[4], 131)
-    // self.ang_vel_y = process_raw(data[5], 131)
-    // self.ang_vel_z = process_raw(data[6], 131)
-
     dataCache.lin_acc_x = process_raw(words[0], 16384) * 9.80665; 
     dataCache.lin_acc_y = process_raw(words[1], 16384) * 9.80665; 
     dataCache.lin_acc_z = process_raw(words[2], 16384) * 9.80665; 
 
-    dataCache.ang_vel_x = process_raw(words[4], 131);
-    dataCache.ang_vel_y = process_raw(words[5], 131);
-    dataCache.ang_vel_z = process_raw(words[6], 131);
+    dataCache.ang_vel_x = (process_raw(words[4], 131) * DEGREE_TO_RAD) - gyro_bias_x;
+    dataCache.ang_vel_y = (process_raw(words[5], 131) * DEGREE_TO_RAD) - gyro_bias_y;
+    dataCache.ang_vel_z = (process_raw(words[6], 131) * DEGREE_TO_RAD) - gyro_bias_z;
     
     return dataCache;
 }

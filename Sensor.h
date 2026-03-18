@@ -6,6 +6,7 @@
 #include "PWM.h"
 #include <optional>
 #include "hardware/i2c.h"
+#include <math.h>
 
 namespace Sensor {
 
@@ -105,7 +106,15 @@ namespace Sensor {
             uint sdaID;
             uint i2cID;
 
+            float gyro_bias_x;
+            float gyro_bias_y;
+            float gyro_bias_z;
+
+            void calibrate_gyro(uint32_t samples);
+
             data dataCache; 
+
+            float DEGREE_TO_RAD = M_PI / 180;
             
             /// @brief Converts from a raw word to a usable float
             /// @param val a uint that contains the (word) of sensor data

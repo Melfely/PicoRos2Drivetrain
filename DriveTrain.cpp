@@ -101,12 +101,14 @@ DualMotor()
 /// @param linVel m/s command linear
 /// @param angVel the angular velocity commandaded in rad/s
 void Drivetrain::EncodedDualMotor::LiveCommandMotors(float linVel, float angVel) {
+    if (abs(linVel) < 0.12 && linVel != 0) {
+        if (abs(angVel) < .1) {
+            (linVel >= 0) ? linVel = 0.12 : linVel = -0.12;
+        }
+    }
+
     float leftTargetVel = linVel - (0.5 * angVel * WHEELBASE);
     float rightTargetVel = linVel + (0.5 * angVel * WHEELBASE);
-
-    if (leftTargetVel == rightTargetVel && angVel != 0) {
-        rightTargetVel += (0.5 * angVel * WHEELBASE);
-    }
 
     _LeftMotor()->SetSpeed(leftTargetVel * INV_WHEELRADIUS);
     _RightMotor()->SetSpeed(rightTargetVel * INV_WHEELRADIUS);

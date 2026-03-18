@@ -160,14 +160,15 @@ void PWM::EncodedMotor::HandleMotor() {
 
         float output = P + I + D + F;
 
-        if (pidTargetSpeed == 0 || output < MINOUTPUT) {
+        if (pidTargetSpeed == 0 || output < MINOUTPUT && output > -MINOUTPUT) {
 
             if (pidTargetSpeed == 0) {
                 output = 0;
                 this->Stop();
                 SleepPin.SetState(false);
             } else {
-                output = MINOUTPUT;
+                (output >= 0) ? output = MINOUTPUT : output = -MINOUTPUT;
+                 
                 SleepPin.SetState(sleepOverride);
             }
             
