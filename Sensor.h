@@ -39,31 +39,35 @@ namespace Sensor {
             MotorEncoder(uint pinA, uint pinB);
             #pragma region Public Methods
 
-            float AngularVelocity(){ return wheelAngVelocity;}
-            void ResetEncoderCount() {this->encoderCounts = 0;}
+            float AngularVelocity(){ return this->motor_angular_velocity / GEAR_RATIO; }
+            void ResetEncoderCount() {this->encoder_counts = 0;}
 
-            volatile int encoderCounts;
-            volatile int previousCounts;
+            volatile int encoder_counts;
+            volatile int previous_counts;
+            volatile uint64_t previous_tick;
 
             #pragma endregion
         protected:
             MotorEncoder() = delete;
             #pragma region Constants & Statics
-                static constexpr float gearRatio = 47;
-                static constexpr float encoderCPR = 48; //Pulse Counts per revolution
-                static constexpr float timerFrequency = 100;
+                static constexpr float GEAR_RATIO = 47;
+                static constexpr float ENCODER_COUNTS_PER_REV = 48; //Pulse Counts per revolution
+                static constexpr float RADIAN_PER_ENCODER_COUNT = ((2 * M_PI) / ENCODER_COUNTS_PER_REV);
+                static constexpr float ENCODER_COUNTS_PER_RADIAN = 1 / RADIAN_PER_ENCODER_COUNT;
+                static constexpr float TIMER_FREQUENCY = 10000;
+                static constexpr uint32_t TIMEOUT_DELAY = 100; //Delay in ms until 0.0 velocity can be reported.  
 
+                
             #pragma endregion
             #pragma region Fields
-                GPIO::PIN EncodPinA;
-                GPIO::PIN EncodPinB;
+                GPIO::PIN encoder_pin_a;
+                GPIO::PIN encoder_pin_b;
 
-                volatile bool pinAVal;
-                volatile bool pinBVal;
+                volatile bool pin_a_val;
+                volatile bool pin_b_val;
 
-
-                /// @brief Angular Velocity of the wheel
-                volatile float wheelAngVelocity;
+                /// @brief Angular Velocity of the motor
+                volatile float motor_angular_velocity; 
 
                 struct repeating_timer timer;
             #pragma endregion
@@ -72,9 +76,11 @@ namespace Sensor {
             void PinAHandler(uint32_t events);
             void PinBHandler(uint32_t events);
 
-            void MeasureVelocity();
+            inline float CalculateVelocity(uint64_t now);
 
-            static bool MeasureVelocity_Callback(struct repeating_timer *t);
+            void TimeoutCheck();
+
+            static bool TimeoutCheck_Callback(struct repeating_timer *t);
 
             #pragma endregion
             

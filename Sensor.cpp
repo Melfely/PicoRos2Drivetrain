@@ -54,31 +54,34 @@ float Sensor::Distance::GetDistance() {
 #pragma region MotorEncoder
 
 Sensor::MotorEncoder::MotorEncoder(uint pinA, uint pinB)
-: EncodPinA(pinA, false), EncodPinB(pinB, false)
+: encoder_pin_a(pinA, false), encoder_pin_b(pinB, false)
 {
 
-    EncodPinA.SetPulls(false, false);
-    EncodPinB.SetPulls(false, false);
+    encoder_pin_a.SetPulls(false, false);
+    encoder_pin_b.SetPulls(false, false);
 
-    this->pinAVal = EncodPinA.GetState();
-    this->pinBVal = EncodPinB.GetState();
+    this->pin_a_val = encoder_pin_a.GetState();
+    this->pin_b_val = encoder_pin_b.GetState();
 
-    this->encoderCounts = 0.0f;
-    this->previousCounts = 0.0f;
+    this->encoder_counts = 0;
+    this->previous_counts = 0;
 
-    this->wheelAngVelocity = 0;
+    this->motor_angular_velocity = 0.0f;
 
-    this->EncodPinB.SetIRQ<&Sensor::MotorEncoder::PinBHandler>(this, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL);
-    this->EncodPinA.SetIRQ<&Sensor::MotorEncoder::PinAHandler>(this, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL);
+    this->previous_tick = time_us_64();
+
+    this->encoder_pin_b.SetIRQ<&Sensor::MotorEncoder::PinBHandler>(this, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL);
+    this->encoder_pin_a.SetIRQ<&Sensor::MotorEncoder::PinAHandler>(this, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL);
     
 
     //Make the timer negative, so the time is ALWAYS accurate regardless of callback execution time
-    add_repeating_timer_ms(-1 * (1000 / timerFrequency), MeasureVelocity_Callback, this, &timer);
+    add_repeating_timer_ms(-1 * (1000 / TIMER_FREQUENCY), TimeoutCheck_Callback, this, &timer);
     
 }
 
 void Sensor::MotorEncoder::PinAHandler(uint32_t events) {
-    this->pinAVal = EncodPinA.GetState();
+    uint64_t now = time_us_64();
+    this->pin_a_val = encoder_pin_a.GetState();
     //This will subtract when pinA and pinB are equal, otherwise will add
     /*
     a = 0, b = 0 subtract
@@ -87,17 +90,19 @@ void Sensor::MotorEncoder::PinAHandler(uint32_t events) {
     a = 1, b = 1 subtract    
     */
 
-    if (pinAVal != pinBVal) {
-        encoderCounts += 1;
+    if (pin_a_val != pin_b_val) {
+        encoder_counts += 1;
     } else {
-        encoderCounts -= 1;
+        encoder_counts -= 1;
     }
+    this->motor_angular_velocity =  CalculateVelocity(now);
 
     //printf("PinA\n"); //debug line
 
 }
 void Sensor::MotorEncoder::PinBHandler(uint32_t events){
-    this->pinBVal = EncodPinB.GetState();
+    uint64_t now = time_us_64();
+    this->pin_b_val = encoder_pin_b.GetState();
     //This will add when pinA and pinB are equal, otherwise will subtract
     /*
     a = 0, b = 0 add
@@ -106,34 +111,40 @@ void Sensor::MotorEncoder::PinBHandler(uint32_t events){
     a = 1, b = 1 add
     */
 
-    if (pinAVal != pinBVal) {
-        encoderCounts -= 1;
+    if (pin_a_val != pin_b_val) {
+        encoder_counts -= 1;
     } else {
-        encoderCounts += 1;
+        encoder_counts += 1;
     }
+    this->motor_angular_velocity =  CalculateVelocity(now);
 
     //printf("PinB\n" ); //debug line
 }
 
-void Sensor::MotorEncoder::MeasureVelocity(){
-    
-    
-    int deltaCounts = this->encoderCounts - this->previousCounts;
-    
-    this->previousCounts = this->encoderCounts; //Update previous counts
+/// @brief Time between encoder count based velocity check, this should handle low speed motors MUCH more accurately, while also handling high speed motors
+/// @param now the time when the encoder count triggered
+/// @return the speed based on how long it was since the LAST time this was called, (therefore the last time this was triggered)
+float Sensor::MotorEncoder::CalculateVelocity(uint64_t now) {
+    uint64_t dT = now - this->previous_tick;
+    float angVel = RADIAN_PER_ENCODER_COUNT / dT;
 
-    float countsPerSecond = deltaCounts * timerFrequency; //The counts per second of the wheel
-    float motorRPS = countsPerSecond / encoderCPR; //Motor Revolutions per second
-    float motorAngVelocity = motorRPS * 2 * M_PI; //Motor Radians per second
 
-    this->wheelAngVelocity = motorAngVelocity / gearRatio; //Radians per second
+    return (encoder_counts >= previous_counts) ? angVel : angVel * -1;
+    this->previous_tick = now;
+}
+
+void Sensor::MotorEncoder::TimeoutCheck(){
+    
+    if (this->previous_tick >= this->TIMEOUT_DELAY) {
+        this->motor_angular_velocity = 0.0f;
+    }
 
 }
 
-bool Sensor::MotorEncoder::MeasureVelocity_Callback(struct repeating_timer *t){
-    //Take the void pointer, cast it to an uint pointer, then dereference it, getting us a uint number
+bool Sensor::MotorEncoder::TimeoutCheck_Callback(struct repeating_timer *t){
+    //Take the void pointer from the user data of the timer, cast it to an MotorEncoder Pointer, then call the measureVelocity Function on said MotorEncoder
     MotorEncoder* self = (MotorEncoder*)t->user_data;
-    self->MeasureVelocity();
+    self->TimeoutCheck();
     return true;
 
 }
