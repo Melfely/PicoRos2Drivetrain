@@ -95,7 +95,7 @@ void PWM::EncodedMotor::HandleMotor() {
         } 
 
         //If fresh command, clear all old data.
-        if (prevTargetSpeed != pidTargetSpeed) {
+        if (abs(prevTargetSpeed - pidTargetSpeed) > INTEGRAL_TIMEOUT_SPEED_DIFF) {
             integralSum = 0.0f;
             prevError = 0.0f;
             prevTargetSpeed = pidTargetSpeed;

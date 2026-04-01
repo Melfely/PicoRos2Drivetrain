@@ -78,6 +78,8 @@ namespace PWM
             static constexpr float KI = 0.01; //Integral Constant 
             static constexpr float KD = 0.0; //Derivative Constant
 
+            static constexpr float INTEGRAL_TIMEOUT_SPEED_DIFF = 1; //Radians per second speed difference
+
             static constexpr float MINOUTPUT = 0.05; //Minimum commanded output 
 
             static constexpr float MAXACCEL = 100 * DT; //Max Acceleration
