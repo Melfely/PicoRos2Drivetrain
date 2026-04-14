@@ -63,9 +63,6 @@ Sensor::MotorEncoder::MotorEncoder(uint pinA, uint pinB)
     this->pin_a_val = encoder_pin_a.GetState();
     this->pin_b_val = encoder_pin_b.GetState();
 
-    this->encoder_counts = 0;
-    this->previous_counts = 0;
-
     this->motor_angular_velocity = 0.0f;
 
     this->previous_tick = time_us_64();
@@ -96,11 +93,10 @@ void Sensor::MotorEncoder::PinAHandler(uint32_t events) {
     */
 
     if (pin_a_val != pin_b_val) {
-        encoder_counts += 1;
+        this->motor_angular_velocity =  CalculateVelocity(now, true);
     } else {
-        encoder_counts -= 1;
+        this->motor_angular_velocity =  CalculateVelocity(now, false);
     }
-    this->motor_angular_velocity =  CalculateVelocity(now);
 
     //printf("PinA\n"); //debug line
 
@@ -117,11 +113,11 @@ void Sensor::MotorEncoder::PinBHandler(uint32_t events){
     */
 
     if (pin_a_val != pin_b_val) {
-        encoder_counts -= 1;
+        this->motor_angular_velocity =  CalculateVelocity(now, false);
     } else {
-        encoder_counts += 1;
+        this->motor_angular_velocity =  CalculateVelocity(now, true);
     }
-    this->motor_angular_velocity =  CalculateVelocity(now);
+    
 
     //printf("PinB\n" ); //debug line
 }
@@ -129,13 +125,13 @@ void Sensor::MotorEncoder::PinBHandler(uint32_t events){
 /// @brief Time between encoder count based velocity check, this should handle low speed motors MUCH more accurately, while also handling high speed motors
 /// @param now the time when the encoder count triggered
 /// @return the speed based on how long it was since the LAST time this was called, (therefore the last time this was triggered)
-float Sensor::MotorEncoder::CalculateVelocity(uint64_t now) {
+float Sensor::MotorEncoder::CalculateVelocity(uint64_t now, bool positive) {
     float dT = (now - this->previous_tick) * US_TO_S;
     float angVel = (RADIAN_PER_ENCODER_COUNT / dT);
 
 
     this->previous_tick = now;
-    return (encoder_counts >= previous_counts) ? angVel : angVel * -1;
+    return (positive) ? angVel : angVel * -1;
 }
 
 //Renable standard optimizations

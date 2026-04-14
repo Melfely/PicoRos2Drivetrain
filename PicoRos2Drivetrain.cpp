@@ -13,7 +13,7 @@
 #include "PWM.h"
 #include "Sensor.h"
 
-constexpr uint64_t UARTDELAYTX = 20; //UART Tx delay in ms this will be 50hz
+constexpr uint64_t UARTDELAYTX = 13; //UART Tx delay in ms this will be 75hz
 
 //Thanks internet, should parse the strings!
 std::pair<float, float> parseString(const char* str) {
@@ -41,6 +41,179 @@ std::pair<float, float> parseString(const char* str) {
     return {x, y};
 }
 
+#define MAIN 0
+#define DEBUG_RAMP 1
+#define DEBUG_SET_SPEED 2
+
+#define MODE MAIN
+
+#if MODE == DEBUG_RAMP
+int main() {
+    stdio_init_all();
+
+    PWM::LED BlueLED(26);
+    PWM::LED GreenLED(27);
+    PWM::LED RedLED(28);
+
+    uint64_t lastSend = time_us_64();
+    Drivetrain::MotorInit RightMotorInit(14,15,13,12,11); //Motor Bank R
+    Drivetrain::MotorInit LeftMotorInit(17,16,18,19,20); //Motor Bank L
+
+    Drivetrain::EncodedDualMotor Drive(LeftMotorInit, RightMotorInit);
+    Drive.SetState(true);
+
+    int command_mode = 0;
+
+    bool command_started = false;
+
+    uint64_t start_time;
+
+    int command_length = 10000 * 1000; //In uS
+    float max_command = 0.75; //in mps
+    float command = 0;
+
+    uint64_t time_dif = 0;
+    float time_ratio = 0;
+
+    while (true) {
+        if ((time_us_64() - lastSend) >= (UARTDELAYTX  * 1000)) {
+            //float linVel = Drive._RightMotor()->AngularVelocity();
+            float linVel = Drive.LinVelocity();
+            printf("%.4f,%.4f\n", 
+                linVel, 
+                command
+            );
+            lastSend = time_us_64();
+            BlueLED.Toggle();
+        }
+
+        switch(command_mode)  {
+            case 0: //Speed up Forward
+                if(!command_started) {
+                    start_time = time_us_64();
+                    command_started = true;
+                }
+
+                time_dif = time_us_64() - start_time;
+                time_ratio = float(time_dif) / command_length;
+                command = time_ratio * max_command;
+
+                Drive.LiveCommandMotors(command, 0);
+
+                if (command_length + start_time < time_us_64() ) {
+                    command_started = false;
+                    command_mode++;
+                    RedLED.Toggle();
+                }
+                break;
+            case 1: //Slow down 
+                if(!command_started) {
+                    start_time = time_us_64();
+                    command_started = true;
+                }
+
+                time_dif = time_us_64() - start_time;
+                time_ratio = float(time_dif) / command_length;
+                command =  max_command -(time_ratio * max_command);
+
+                Drive.LiveCommandMotors(command, 0);
+
+                if (command_length + start_time < time_us_64() ) {
+                    command_started = false;
+                    command_mode++;
+                    RedLED.Toggle();
+                }
+
+                break;
+            case 2: //Speed Up Backwards
+
+                if(!command_started) {
+                    start_time = time_us_64();
+                    command_started = true;
+                }
+
+                time_dif = time_us_64() - start_time;
+                time_ratio = float(time_dif) / command_length;
+                command = -1 * (time_ratio * max_command);
+
+                Drive.LiveCommandMotors(command, 0);
+
+                if (command_length+ start_time < time_us_64() ) {
+                    command_started = false;
+                    command_mode++;
+                    RedLED.Toggle();
+                }
+                break;
+            case 3: //Slow down
+                if(!command_started) {
+                    start_time = time_us_64();
+                    command_started = true;
+                }
+
+                time_dif = time_us_64() - start_time;
+                time_ratio = float(time_dif) / command_length;
+                command = -1 * (max_command -(time_ratio * max_command));
+
+                Drive.LiveCommandMotors(command, 0);
+
+                if (command_length + start_time < time_us_64() ) {
+                    command_started = false;
+                    command_mode++;
+                    RedLED.Toggle();
+                }
+
+                break;
+            default:
+                command_started = false;
+                command_mode = 0;
+                break;
+                
+        }
+
+        GreenLED.ToggleEvery(1);
+        sleep_us(1000);
+    }   
+
+}
+
+#endif
+#if MODE == DEBUG_SET_SPEED
+int main() {
+    stdio_init_all();
+
+    PWM::LED BlueLED(26);
+    PWM::LED GreenLED(27);
+    PWM::LED RedLED(28);
+
+    uint64_t lastSend = time_us_64();
+    Drivetrain::MotorInit RightMotorInit(14,15,13,12,11); //Motor Bank R
+    Drivetrain::MotorInit LeftMotorInit(17,16,18,19,20); //Motor Bank L
+
+    Drivetrain::EncodedDualMotor Drive(LeftMotorInit, RightMotorInit);
+    Drive.SetState(true);
+
+    float command = 0.5;
+    Drive.LiveCommandMotors(command,0);
+
+    while (true) {
+        if ((time_us_64() - lastSend) >= (UARTDELAYTX  * 1000)) {
+            //float linVel = Drive._RightMotor()->AngularVelocity();
+            float linVel = Drive.LinVelocity();
+            printf("%.4f,%.4f\n", 
+                linVel, 
+                command
+            );
+            lastSend = time_us_64();
+            BlueLED.Toggle();
+        }
+
+        GreenLED.ToggleEvery(1);
+        sleep_us(1000);
+    }   
+
+}
+#endif
+#if MODE == MAIN
 int main()
 {
     stdio_init_all();
@@ -79,7 +252,7 @@ int main()
                 imu_data.ang_vel_z
             );
             lastSend = time_us_64();
-            BlueLED.Toggle();
+            BlueLED.ToggleEvery(.100);
         }
         
         //Read a single character
@@ -93,7 +266,7 @@ int main()
 
                 auto [linVel, angVel] = parseString(buffer);
                 Drive.LiveCommandMotors(linVel, angVel);
-                RedLED.Toggle();
+                RedLED.ToggleEvery(.250);
                 bufferIndex = 0;
             } else if (bufferIndex < sizeof(buffer) - 1) {
                 buffer[bufferIndex++] = (char)c;
@@ -105,3 +278,4 @@ int main()
         sleep_us(1000);
     }   
 }
+#endif

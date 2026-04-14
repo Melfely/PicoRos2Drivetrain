@@ -32,7 +32,6 @@ namespace PWM
             virtual void Stop() override;
 
             float GetTargetSpeed() {return pidTargetSpeed;};
-            float GetCurrentSetSpeed() {return pidCurrentSpeed;};
             float GetSpeedMag() {return speedMag;};
 
             static constexpr float MAXSPEED = 25.6f; //Max Speed Magnitude in Rad/s 
@@ -58,7 +57,6 @@ namespace PWM
 
             int timerCounts = 0; //The number of cycles since last PID check
 
-            float pidCurrentSpeed = 0.0f; //The pid speed before the acceleration system, is signed.
             volatile float pidTargetSpeed = 0.0f; //The set speed of the PID
             float prevTargetSpeed = 0.0f;// The previously set target speed;
 
@@ -74,18 +72,14 @@ namespace PWM
             static constexpr float DT = PIDRATE / (TIMERFREQUENCY * 1.0f); //The rawTime between each pidCheck
             static constexpr float INV_DT = 1 / DT;
             static constexpr float KF = 0.042; //Feedforward Constant
-            static constexpr float KP = 0.075; //Proportional Constant 
-            static constexpr float KI = 0.01; //Integral Constant 
+            static constexpr float KP = 0.0; //Proportional Constant 
+            static constexpr float KI = 0.5; //Integral Constant 
             static constexpr float KD = 0.0; //Derivative Constant
 
             static constexpr float INTEGRAL_TIMEOUT_SPEED_DIFF = 1; //Radians per second speed difference
 
-            static constexpr float MINOUTPUT = 0.05; //Minimum commanded output 
-
-            static constexpr float MAXACCEL = 100 * DT; //Max Acceleration
-            static constexpr float MAXDEACCEL = 1000.0 * DT; //Max DeAcceleration or breaking
-
-            static constexpr float MAXLAG = MAXSPEED * 0.25; //The max difference from commanded speed to real speed the acceleration can be ahead by.
+            static constexpr float MIN_PID_SPEED = 0.05;
+            static constexpr float MINOUTPUT = 0;
             static constexpr int MAXMOTORS = 4;
 
 

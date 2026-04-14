@@ -102,46 +102,19 @@ void PWM::EncodedMotor::HandleMotor() {
         }
         this->lastCommandCounts += 1;
 
-        
         this->timerCounts = 0;
 
-        //The Difference between the current set speed and the max set speed.
-        float speedDelta = pidTargetSpeed - pidCurrentSpeed;
-
-        //If we are deacclerating this will be 1.0, and 0.0 if accelerating.
-        float isBreaking = (float)((pidCurrentSpeed * speedDelta) < 0.0f);
-
-        //Branchless if statement. 
-        float currentLimit = MAXACCEL + (MAXDEACCEL - MAXACCEL) * isBreaking;
-
-        //How much the speed can change by this tick
-        float velocityChange = std::clamp(speedDelta, -currentLimit, currentLimit);
-
-        //The adjustedSpeedValue
-        float adjustedCurrentSpeed = pidCurrentSpeed + velocityChange;
-        adjustedCurrentSpeed = std::clamp(adjustedCurrentSpeed, -MAXSPEED, MAXSPEED);
-
-        //The max allowed difference from the realVelocity
-        float minAllowed = this->AngularVelocity() - MAXLAG;
-        float maxAllowed = this->AngularVelocity() + MAXLAG;
-
-        //Clamp the speed adjustment to the ranges
-        adjustedCurrentSpeed = std::clamp(adjustedCurrentSpeed, minAllowed, maxAllowed);
-
-        pidCurrentSpeed = adjustedCurrentSpeed;
-
         //Get us the speed error
-        float error = pidCurrentSpeed - this->AngularVelocity();
+        float error = pidTargetSpeed - this->AngularVelocity();
 
         //Non-branching execution statement
-        this->integralSum = integralSum * !(prevError == 0 && error == 0 && pidCurrentSpeed == 0);
+        this->integralSum = integralSum * !(prevError == 0 && error == 0 && pidTargetSpeed == 0);
 
         //Proprotional term
         float P = KP * error;
 
         //Intgeral term
         integralSum += error * DT;
-
 
         //Anti-Windup system, clamps the integral so it doesn't get stupid high
         float integralMax = maxOutput / (KI > 0 ? KI : 1.0f);
@@ -156,13 +129,16 @@ void PWM::EncodedMotor::HandleMotor() {
         prevError = error;
 
         //Feedforward
-        float F = KF * pidCurrentSpeed;
+        float F = KF * pidTargetSpeed;
 
         float output = P + I + D + F;
 
-        if (pidTargetSpeed == 0 || output < MINOUTPUT && output > -MINOUTPUT) {
+        bool pid_side = pidTargetSpeed < MIN_PID_SPEED && pidTargetSpeed > - MIN_PID_SPEED;
+        bool output_side = output < MINOUTPUT && output > -MINOUTPUT;
 
-            if (pidTargetSpeed == 0) {
+        if ( pid_side || output_side ) {
+
+            if (pid_side) {
                 output = 0;
                 this->Stop();
                 SleepPin.SetState(false);
