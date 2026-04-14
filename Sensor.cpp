@@ -75,9 +75,14 @@ Sensor::MotorEncoder::MotorEncoder(uint pinA, uint pinB)
     
 
     //Make the timer negative, so the time is ALWAYS accurate regardless of callback execution time
-    add_repeating_timer_ms(-1 * (1000 / TIMER_FREQUENCY), TimeoutCheck_Callback, this, &timer);
+    add_repeating_timer_us(-1 * (1000000 / TIMER_FREQUENCY), TimeoutCheck_Callback, this, &timer);
     
 }
+
+// Save current optimization settings
+#pragma GCC push_options
+// Force optimization to level 0 (None) for this section
+#pragma GCC optimize ("O0")
 
 void Sensor::MotorEncoder::PinAHandler(uint32_t events) {
     uint64_t now = time_us_64();
@@ -125,17 +130,20 @@ void Sensor::MotorEncoder::PinBHandler(uint32_t events){
 /// @param now the time when the encoder count triggered
 /// @return the speed based on how long it was since the LAST time this was called, (therefore the last time this was triggered)
 float Sensor::MotorEncoder::CalculateVelocity(uint64_t now) {
-    uint64_t dT = now - this->previous_tick;
-    float angVel = RADIAN_PER_ENCODER_COUNT / dT;
+    float dT = (now - this->previous_tick) * US_TO_S;
+    float angVel = (RADIAN_PER_ENCODER_COUNT / dT);
 
 
-    return (encoder_counts >= previous_counts) ? angVel : angVel * -1;
     this->previous_tick = now;
+    return (encoder_counts >= previous_counts) ? angVel : angVel * -1;
 }
+
+//Renable standard optimizations
+#pragma GCC pop_options
 
 void Sensor::MotorEncoder::TimeoutCheck(){
     
-    if (this->previous_tick >= this->TIMEOUT_DELAY) {
+    if (time_us_64() - this->previous_tick >= this->TIMEOUT_DELAY) {
         this->motor_angular_velocity = 0.0f;
     }
 

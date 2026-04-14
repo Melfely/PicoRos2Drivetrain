@@ -50,12 +50,13 @@ namespace Sensor {
         protected:
             MotorEncoder() = delete;
             #pragma region Constants & Statics
-                static constexpr float GEAR_RATIO = 47;
-                static constexpr float ENCODER_COUNTS_PER_REV = 48; //Pulse Counts per revolution
+                static constexpr float GEAR_RATIO = 47.0f;
+                static constexpr float ENCODER_COUNTS_PER_REV = 48.0f; //Pulse Counts per revolution
                 static constexpr float RADIAN_PER_ENCODER_COUNT = ((2 * M_PI) / ENCODER_COUNTS_PER_REV);
                 static constexpr float ENCODER_COUNTS_PER_RADIAN = 1 / RADIAN_PER_ENCODER_COUNT;
-                static constexpr float TIMER_FREQUENCY = 10000;
+                static constexpr float TIMER_FREQUENCY = 10'000;
                 static constexpr uint32_t TIMEOUT_DELAY = 100; //Delay in ms until 0.0 velocity can be reported.  
+                static constexpr float US_TO_S = 1.0f / 1'000'000.0f; //microseconds to seconds
 
                 
             #pragma endregion
@@ -76,7 +77,7 @@ namespace Sensor {
             void PinAHandler(uint32_t events);
             void PinBHandler(uint32_t events);
 
-            inline float CalculateVelocity(uint64_t now);
+            float CalculateVelocity(uint64_t now);
 
             void TimeoutCheck();
 
