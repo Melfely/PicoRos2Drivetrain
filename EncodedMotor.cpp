@@ -83,7 +83,7 @@ bool PWM::EncodedMotor::HandleMotor_Callback(struct repeating_timer *t) {
 // Force optimization to level 0 (None) for this section
 #pragma GCC optimize ("O0")
 
-/// @brief Runs the pid, and auto stopping for a rotate counts command
+/// @brief Runs the pid
 void PWM::EncodedMotor::HandleMotor() {
     timerCounts++;
     
@@ -93,13 +93,7 @@ void PWM::EncodedMotor::HandleMotor() {
         if (lastCommandCounts >= PIDRATE ) {
             this->Stop();
         } 
-
-        //If fresh command, clear all old data.
-        if (abs(prevTargetSpeed - pidTargetSpeed) > INTEGRAL_TIMEOUT_SPEED_DIFF) {
-            integralSum = 0.0f;
-            prevError = 0.0f;
-            prevTargetSpeed = pidTargetSpeed;
-        }
+        
         this->lastCommandCounts += 1;
 
         this->timerCounts = 0;
@@ -117,7 +111,7 @@ void PWM::EncodedMotor::HandleMotor() {
         integralSum += error * DT;
 
         //Anti-Windup system, clamps the integral so it doesn't get stupid high
-        float integralMax = maxOutput / (KI > 0 ? KI : 1.0f);
+        float integralMax = MAX_OUTPUT * INV_KI;
         integralSum = std::clamp(integralSum, -integralMax, integralMax);
 
         float I = KI * integralSum;
@@ -131,7 +125,20 @@ void PWM::EncodedMotor::HandleMotor() {
         //Feedforward
         float F = KF * pidTargetSpeed;
 
-        float output = P + I + D + F;
+        //Calculate the output
+        float calc_output = P + I + D + F;
+
+        //Calculate the change
+        float step = calc_output - this->previous_output;
+        //Clamp the change for acceleration limiting
+        step = std::clamp(step, -MAX_ACCEL, MAX_ACCEL);
+
+        //Update the output from previous with the step
+        float output = std::clamp(previous_output + step, -MAX_OUTPUT, MAX_OUTPUT);
+        this->previous_output = output;
+
+        float excess = output - calc_output;
+        integralSum += (excess * INV_KI);
 
         bool pid_side = pidTargetSpeed < MIN_PID_SPEED && pidTargetSpeed > - MIN_PID_SPEED;
         bool output_side = output < MINOUTPUT && output > -MINOUTPUT;
@@ -153,10 +160,7 @@ void PWM::EncodedMotor::HandleMotor() {
             SleepPin.SetState(sleepOverride);
         }
 
-        output = std::clamp(output, -maxOutput, maxOutput);
-
         //Set Direction and Speed
-
         this->SetDuty(std::abs(output));
 
         (output >= 0) ? Forward() : Backward(); 
@@ -184,7 +188,11 @@ void PWM::EncodedMotor::SetSpeed(float speed) {
 
 /// @brief Stop the motor, and clearing any PID information
 void PWM::EncodedMotor::Stop() {
-    this->pidTargetSpeed = 0;
+    this->pidTargetSpeed = 0.0f;
+    
+    this->integralSum = 0.0f;
+    this->previous_output = 0.0f;
+    this->prevError = 0.0f;
 
     lastCommandCounts = 0;
 

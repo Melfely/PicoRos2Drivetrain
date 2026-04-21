@@ -75,6 +75,8 @@ int main() {
     uint64_t time_dif = 0;
     float time_ratio = 0;
 
+    sleep_ms(5000);
+
     while (true) {
         if ((time_us_64() - lastSend) >= (UARTDELAYTX  * 1000)) {
             //float linVel = Drive._RightMotor()->AngularVelocity();
@@ -193,7 +195,8 @@ int main() {
     Drive.SetState(true);
 
     float command = 0.5;
-    Drive.LiveCommandMotors(command,0);
+
+    sleep_ms(5000);
 
     while (true) {
         if ((time_us_64() - lastSend) >= (UARTDELAYTX  * 1000)) {
@@ -205,9 +208,10 @@ int main() {
             );
             lastSend = time_us_64();
             BlueLED.Toggle();
+            Drive.LiveCommandMotors(command,0);
         }
 
-        GreenLED.ToggleEvery(1);
+        RedLED.ToggleEvery(1);
         sleep_us(1000);
     }   
 

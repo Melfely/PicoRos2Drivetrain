@@ -57,8 +57,8 @@ Sensor::MotorEncoder::MotorEncoder(uint pinA, uint pinB)
 : encoder_pin_a(pinA, false), encoder_pin_b(pinB, false)
 {
 
-    encoder_pin_a.SetPulls(false, false);
-    encoder_pin_b.SetPulls(false, false);
+    encoder_pin_a.SetPulls(false, true);
+    encoder_pin_b.SetPulls(false, true);
 
     this->pin_a_val = encoder_pin_a.GetState();
     this->pin_b_val = encoder_pin_b.GetState();
@@ -138,9 +138,10 @@ float Sensor::MotorEncoder::CalculateVelocity(uint64_t now, bool positive) {
 #pragma GCC pop_options
 
 void Sensor::MotorEncoder::TimeoutCheck(){
-    
+    uint64_t now = time_us_64();
     if (time_us_64() - this->previous_tick >= this->TIMEOUT_DELAY) {
         this->motor_angular_velocity = 0.0f;
+        this->previous_tick = now;
     }
 
 }
