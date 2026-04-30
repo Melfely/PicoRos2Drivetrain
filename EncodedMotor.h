@@ -82,7 +82,7 @@ namespace PWM
             static constexpr float MIN_PID_SPEED = 0.05f;
             static constexpr float MINOUTPUT = 0.0f;
             static constexpr int MAXMOTORS = 4;
-            static constexpr float MAX_ACCEL = 0.03f;
+            static constexpr float MAX_ACCEL = 0.15f;
 
 
             static PWM::EncodedMotor* motorObjects[MAXMOTORS]; //Max of 4 Motors, each motor takes 5 pins, using 20 pins for the motors leaves only 8 for other objects.

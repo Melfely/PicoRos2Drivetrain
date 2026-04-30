@@ -83,11 +83,17 @@ namespace Drivetrain
             #pragma endregion
             #pragma region Statics and Constants
 
-            static constexpr float WHEELBASE = 0.215;
+            static constexpr float WHEELBASE = 0.215f;
             static constexpr float INV_WHEELBASE = 1 / WHEELBASE;
-            static constexpr float WHEELRADIUS = 0.033;
+            static constexpr float WHEELRADIUS = 0.033f;
             static constexpr float INV_WHEELRADIUS = 1 / WHEELRADIUS;
+            static constexpr float ANG_FACTOR = 0.5f * WHEELBASE;
 
+
+            static constexpr float MIN_LIN_SPEED = 0.10f; //The minimum linear speed
+            static constexpr float MIN_ANG_SPEED = 0.60f; //The minimum angular speed
+            static constexpr float MIN_ANG_COMPONENT = MIN_ANG_SPEED * ANG_FACTOR; //The minimum angular component
+            static constexpr float MIN_TARGET_SPEED = MIN_LIN_SPEED - (0.5f * MIN_ANG_SPEED * WHEELBASE); //Calculate the min target speed
             #pragma endregion
 
         private:

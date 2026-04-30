@@ -102,9 +102,38 @@ DualMotor()
 /// @param angVel the angular velocity commandaded in rad/s
 void Drivetrain::EncodedDualMotor::LiveCommandMotors(float linVel, float angVel) {
     
-    float leftTargetVel = linVel - (0.5 * angVel * WHEELBASE);
-    float rightTargetVel = linVel + (0.5 * angVel * WHEELBASE);
+    //Calculate the needed turning component of the wheel command
+    float ang_component = angVel * ANG_FACTOR;
 
+    //Convert these to abs
+    float abs_linVel = abs(linVel);
+    float abs_ang_component = abs(ang_component); 
+
+    //If we are below the min speed commands we will increase the commanded values by an amount to keep the relation the same
+    //Just increases the command by enough to hopefully move.
+    if (abs_linVel < MIN_LIN_SPEED && abs_ang_component < MIN_ANG_COMPONENT) {
+        //Only work if Greater than a noise floor value
+        const float NOISE_FLOOR = 0.001f;
+        if(abs_linVel > NOISE_FLOOR || abs_ang_component > NOISE_FLOOR) {
+            //Check to make sure the command is above 0, because if not we need to not divide by it.
+            float lin_scale = (abs_linVel > 0.0f) ? (MIN_LIN_SPEED / abs_linVel) : 0.0;
+            float ang_scale = (abs_ang_component > 0.0f) ? (MIN_ANG_COMPONENT / abs_ang_component) : 0.0f; 
+
+            //Scale by the smaller of the two factors unless one is zero, then scale by the non-zeo
+            float scale = (lin_scale != 0.0f && ang_scale != 0.0f) ? 
+            std::min(lin_scale, ang_scale) : std::max(lin_scale, ang_scale); 
+            
+            linVel *= scale;
+            ang_component *= scale;
+            
+        }
+    }
+
+    //Calculate the side specific output values. 
+    float leftTargetVel = linVel - ang_component;
+    float rightTargetVel = linVel + ang_component;
+
+    //Send them to the motors and convert to radians per second
     _LeftMotor()->SetSpeed(leftTargetVel * INV_WHEELRADIUS);
     _RightMotor()->SetSpeed(rightTargetVel * INV_WHEELRADIUS);
 

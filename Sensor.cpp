@@ -77,9 +77,9 @@ Sensor::MotorEncoder::MotorEncoder(uint pinA, uint pinB)
 }
 
 // Save current optimization settings
-#pragma GCC push_options
+//#pragma GCC push_options
 // Force optimization to level 0 (None) for this section
-#pragma GCC optimize ("O0")
+//#pragma GCC optimize ("O0")
 
 void Sensor::MotorEncoder::PinAHandler(uint32_t events) {
     uint64_t now = time_us_64();
@@ -135,7 +135,7 @@ float Sensor::MotorEncoder::CalculateVelocity(uint64_t now, bool positive) {
 }
 
 //Renable standard optimizations
-#pragma GCC pop_options
+//#pragma GCC pop_options
 
 void Sensor::MotorEncoder::TimeoutCheck(){
     uint64_t now = time_us_64();

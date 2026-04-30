@@ -79,9 +79,9 @@ bool PWM::EncodedMotor::HandleMotor_Callback(struct repeating_timer *t) {
 }
 
 // Save current optimization settings
-#pragma GCC push_options
+//#pragma GCC push_options
 // Force optimization to level 0 (None) for this section
-#pragma GCC optimize ("O0")
+//#pragma GCC optimize ("O0")
 
 /// @brief Runs the pid
 void PWM::EncodedMotor::HandleMotor() {
@@ -170,7 +170,7 @@ void PWM::EncodedMotor::HandleMotor() {
 }
 
 //Renable standard optimizations
-#pragma GCC pop_options
+//#pragma GCC pop_options
 
 /// @brief Set the target PID speed, and or speedMag
 /// @param speed the value in rad/s

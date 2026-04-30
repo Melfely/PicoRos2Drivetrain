@@ -16,7 +16,7 @@ PWM::LED::LED(uint pin) : PWM::PIN(pin, 1000, 65535) {
 /// @param PHPin the pin that will be GPIO PHPin, this is the pin that will control direction
 /// @param SleepPin  The pin that will be GPIO Pin2, this is the pin that controls the drive board
 PWM::MOTOR::MOTOR(uint ENPin, uint PHPin, uint SleepPin) 
-: PWM::PIN(ENPin, 5000, -1), 
+: PWM::PIN(ENPin, 25000, -1), 
 PHPin(PHPin, true),
 SleepPin(SleepPin, true)
 {
